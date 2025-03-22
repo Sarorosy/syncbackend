@@ -74,8 +74,8 @@ io.on("connection", (socket) => {
     });
 
     socket.on("update_task_title", (data) => {
-        const { taskId, title } = data;
-
+        const { taskId, title, user_id } = data;
+    
         // Update the task title in database
         const query = "UPDATE tbl_tasks SET title = ? WHERE id = ?";
         db.query(query, [title, taskId], (err, results) => {
@@ -84,11 +84,73 @@ io.on("connection", (socket) => {
                 return;
             }
             console.log("Task updated successfully");
-
+    
+            if (!taskId) {
+                console.error("Task ID required");
+                return;
+            }
+    
+            // Check the last comment for the same task and user
+            const checkQuery = `
+                SELECT comment, user_id FROM tbl_comments
+                WHERE task_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            `;
+    
+            db.query(checkQuery, [taskId], (checkErr, checkResults) => {
+                if (checkErr) {
+                    console.error("Error checking previous comment:", checkErr);
+                    return;
+                }
+    
+                // If the last comment is "Edited task title" by the same user, do not insert
+                if (checkResults.length > 0 && checkResults[0].comment === "Edited task title" && checkResults[0].user_id === user_id) {
+                    console.log("Skipping duplicate task edit comment");
+                    return;
+                }
+    
+                // Insert into database
+                const insertQuery = "INSERT INTO tbl_comments (task_id, user_id, comment, islog, created_at) VALUES (?, ?, ?, ?, NOW())";
+                db.query(insertQuery, [taskId, user_id, "Edited task title", 1], (insertErr, insertResults) => {
+                    if (insertErr) {
+                        console.error("Error saving comment:", insertErr);
+                        return;
+                    }
+    
+                    const commentId = insertResults.insertId;
+                    console.log("Comment added successfully");
+    
+                    // Fetch the comment with user details
+                    const fetchQuery = `
+                        SELECT c.*, u.name AS user_name, u.profile_pic 
+                        FROM tbl_comments c 
+                        JOIN tbl_users u ON c.user_id = u.id 
+                        WHERE c.id = ?
+                        ORDER BY c.created_at ASC
+                    `;
+    
+                    db.query(fetchQuery, [commentId], (fetchErr, fetchResults) => {
+                        if (fetchErr) {
+                            console.error("Error fetching comment details:", fetchErr);
+                            return;
+                        }
+    
+                        if (fetchResults.length > 0) {
+                            const newComment = fetchResults[0];
+                            console.log("New comment:", newComment);
+                            // Broadcast the new comment to all clients
+                            io.emit("new_comment", newComment);
+                        }
+                    });
+                });
+            });
+    
             // Broadcast the update to all clients
             io.emit("task_updated", { taskId, title });
         });
     });
+    
 
     socket.on("comment_added", (data) => {
         const { taskId, comment, user_id, islog = 0 } = data;
@@ -115,6 +177,7 @@ io.on("connection", (socket) => {
                 FROM tbl_comments c 
                 JOIN tbl_users u ON c.user_id = u.id 
                 WHERE c.id = ?
+                ORDER BY c.created_at ASC
             `;
     
             db.query(fetchQuery, [commentId], (fetchErr, fetchResults) => {
@@ -136,7 +199,7 @@ io.on("connection", (socket) => {
     
 
     socket.on("update_task_description", (data) => {
-        const { taskId, description } = data;
+        const { taskId, description, user_id } = data;
 
         // Update the task title in database
         const query = "UPDATE tbl_tasks SET description = ? WHERE id = ?";
@@ -146,6 +209,67 @@ io.on("connection", (socket) => {
                 return;
             }
             console.log("Task updated successfully");
+
+            if (!taskId) {
+                console.error("Task ID required");
+                return;
+            }
+    
+            // Check the last comment for the same task and user
+            const checkQuery = `
+                SELECT comment, user_id FROM tbl_comments
+                WHERE task_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            `;
+    
+            db.query(checkQuery, [taskId], (checkErr, checkResults) => {
+                if (checkErr) {
+                    console.error("Error checking previous comment:", checkErr);
+                    return;
+                }
+    
+                // If the last comment is "Edited task title" by the same user, do not insert
+                if (checkResults.length > 0 && checkResults[0].comment === "Edited task description" && checkResults[0].user_id === user_id) {
+                    console.log("Skipping duplicate task edit comment");
+                    return;
+                }
+    
+                // Insert into database
+                const insertQuery = "INSERT INTO tbl_comments (task_id, user_id, comment, islog, created_at) VALUES (?, ?, ?, ?, NOW())";
+                db.query(insertQuery, [taskId, user_id, "Edited task description", 1], (insertErr, insertResults) => {
+                    if (insertErr) {
+                        console.error("Error saving comment:", insertErr);
+                        return;
+                    }
+    
+                    const commentId = insertResults.insertId;
+                    console.log("Comment added successfully");
+    
+                    // Fetch the comment with user details
+                    const fetchQuery = `
+                        SELECT c.*, u.name AS user_name, u.profile_pic 
+                        FROM tbl_comments c 
+                        JOIN tbl_users u ON c.user_id = u.id 
+                        WHERE c.id = ?
+                        ORDER BY c.created_at ASC
+                    `;
+    
+                    db.query(fetchQuery, [commentId], (fetchErr, fetchResults) => {
+                        if (fetchErr) {
+                            console.error("Error fetching comment details:", fetchErr);
+                            return;
+                        }
+    
+                        if (fetchResults.length > 0) {
+                            const newComment = fetchResults[0];
+                            console.log("New comment:", newComment);
+                            // Broadcast the new comment to all clients
+                            io.emit("new_comment", newComment);
+                        }
+                    });
+                });
+            });
 
             // Broadcast the update to all clients
             io.emit("task_description_updated", { taskId, description });

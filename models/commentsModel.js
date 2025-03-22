@@ -12,7 +12,7 @@ const getCommentsByTaskId = (task_id, callback) => {
         FROM tbl_comments c 
         JOIN tbl_users u ON c.user_id = u.id 
         WHERE c.task_id = ?
-        ORDER BY c.created_at DESC
+        ORDER BY c.created_at ASC
     `;
     db.query(sql, [task_id], callback);
 };
