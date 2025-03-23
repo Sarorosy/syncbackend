@@ -2,7 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const http = require("http");
-const { Server } = require("socket.io");
+const socket = require("./socket");
 const mysql = require("mysql2");
 const cors = require("cors");
 const admin = require("./firebaseAdmin");
@@ -16,12 +16,7 @@ const commentsRoutes = require("./routes/commentsRoutes");
 const app = express();
 app.use(bodyParser.json());
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"],
-    },
-});
+const io = socket.init(server);
 
 // Middleware
 app.use(cors());
@@ -35,11 +30,12 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/comments", commentsRoutes);
 app.use("/uploads/taskuploads", express.static("uploads/taskuploads"));
 app.use("/uploads/commentuploads", express.static("uploads/commetuploads"));
+app.use("/uploads/users", express.static("uploads/users"));
 // MySQL Database Connection
 const db = mysql.createConnection({
     host: 'localhost',
     user: 'root',
-    password: 'sarorosy',
+    password: '',
     database: 'chat_app',
 });
 

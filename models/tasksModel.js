@@ -1,9 +1,9 @@
 const db = require("../db");
 
-// Create a new task
 const createTask = (task, callback) => {
     const sql = `INSERT INTO tbl_tasks (title, description, assigned_to, followers, status, priority, due_date, due_time, created_by, image_url) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`; 
+                 
     db.query(sql, [
         task.title,
         task.description,
@@ -14,9 +14,26 @@ const createTask = (task, callback) => {
         task.due_date,
         task.due_time,
         task.created_by,
-        task.image_url || null // Store image URL if provided
-    ], callback);
+        task.image_url || null
+    ], (err, result) => {
+        if (err) {
+            return callback(err, null);
+        }
+
+        // Get the inserted task's ID
+        const taskId = result.insertId;
+
+        // Insert a default comment into tbl_comments
+        const commentSql = "INSERT INTO tbl_comments (task_id, user_id, comment, islog, created_at) VALUES (?, ?, ?, ?, NOW())";
+        db.query(commentSql, [taskId, task.created_by, "Created task", 1], (commentErr) => {
+            if (commentErr) {
+                console.error("Error saving comment:", commentErr);
+            }
+            callback(null, result); // Return the original task creation result
+        });
+    });
 };
+
 
 
 const getAllTasks = (callback) => {
