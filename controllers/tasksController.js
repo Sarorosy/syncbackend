@@ -1,4 +1,5 @@
 const taskModel = require("../models/tasksModel");
+const sendNotification = require('../sendNotification');
 
 // Create a new task
 const createTask = (req, res) => {
@@ -33,6 +34,15 @@ const createTask = (req, res) => {
     taskModel.createTask(newTask, (err, result) => {
         if (err) return res.status(500).json({ status: false, message: "Database error", error: err });
         res.json({ status: true, message: "Task created successfully", taskId: result.insertId });
+
+        const userFCMToken = "eO-tyaqrkWkBfQPj5eMrsM:APA91bEfqbpMzOOKCCKiW_ofi35FYqqzU-aV9dtB0Vbt_3h6MLU0H1qvBC352_1sgVQAfPLEnOXQN8GrGV0RIhQXQBxiT7zxhhm7vkvddqOgOqbOj9lxCIk";
+        const title = "New Task Assigned!";
+        const description = "You have been assigned a new task. Check it now!";
+        const customData = { taskId: "12345", priority: "high" };
+
+        sendNotification(userFCMToken, title, description, customData)
+            .then(response => console.log("Notification Response:", response))
+            .catch(error => console.error("Notification Error:", error));
     });
 };
 
@@ -49,6 +59,16 @@ const getTaskById = (req, res) => {
     const { id } = req.params;
 
     taskModel.getTaskById(id, (err, tasks) => {
+        if (err) return res.status(500).json({ status: false, message: "Database error", error: err });
+        if (tasks.length === 0) return res.status(404).json({ status: false, message: "Task not found" });
+        res.json({ status: true, task: tasks[0] });
+    });
+};
+// Get a single task by ID
+const getTaskByUniqueId = (req, res) => {
+    const { unique_id } = req.params;
+
+    taskModel.getTaskByUniqueId(unique_id, (err, tasks) => {
         if (err) return res.status(500).json({ status: false, message: "Database error", error: err });
         if (tasks.length === 0) return res.status(404).json({ status: false, message: "Task not found" });
         res.json({ status: true, task: tasks[0] });
@@ -88,4 +108,4 @@ const uploadTaskImage = (req, res) => {
     });
 };
 
-module.exports = { createTask, getAllTasks, getTaskById, updateTask, deleteTask, uploadTaskImage };
+module.exports = { createTask, getAllTasks, getTaskById,getTaskByUniqueId, updateTask, deleteTask, uploadTaskImage };

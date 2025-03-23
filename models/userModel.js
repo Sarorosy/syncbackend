@@ -22,7 +22,7 @@ const getAllUsers = (callback) => {
     });
 };
 const findUserById = (id, callback) => {
-    const query = "SELECT id, name, pronouns, bio, email, profile_pic FROM tbl_users WHERE id = ?";
+    const query = "SELECT id, name, pronouns, password, bio, email, profile_pic FROM tbl_users WHERE id = ?";
     db.query(query, [id], (err, results) => {
         if (err) return callback(err, null);
         if (results.length === 0) return callback(null, null);
@@ -37,4 +37,16 @@ const updateUser = (id, userData, callback) => {
     db.query(query, [name, pronouns, bio, profile_pic, id], callback);
 };
 
-module.exports = { findUserByEmail, updateUserToken, getAllUsers, updateUser, findUserById };
+const addUser = (userData, callback) => {
+    const { name, email, password } = userData;
+    const query = "INSERT INTO tbl_users (name, email, password) VALUES (?, ?, ?)";
+    db.query(query, [name, email, password], callback);
+};
+
+// Soft delete user (set trashed = 1)
+const softDeleteUser = (id, callback) => {
+    const query = "UPDATE tbl_users SET trashed = 1 WHERE id = ?";
+    db.query(query, [id], callback);
+};
+
+module.exports = { findUserByEmail, updateUserToken, getAllUsers, updateUser, findUserById, addUser, softDeleteUser };

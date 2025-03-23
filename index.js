@@ -278,7 +278,6 @@ io.on("connection", (socket) => {
     });
 });
 
-// API Endpoint for Chat History
 app.get("/api/messages", (req, res) => {
     const { sender, receiver } = req.query;
 
@@ -307,17 +306,28 @@ app.get('/api/users', (req, res) => {
   });
 });
 
-app.post('/api/users', (req, res) => {
-  const { name, email, password } = req.body;
-  // Hash password, then insert the new user
-  const query = 'INSERT INTO tbl_users (name, email, password) VALUES (?, ?, ?)';
-  db.query(query, [name, email, password], (err, result) => {
-      if (err) {
-          return res.status(500).send('Error adding user');
-      }
-      res.status(201).json({ id: result.insertId, name, email });
-  });
+app.post('/api/saveFcmToken', (req, res) => {
+    const { user_id, token } = req.body;
+
+    if (!user_id || !token) {
+        return res.status(400).json({ error: 'user_id and token are required' });
+    }
+
+    const query = `
+        INSERT INTO tbl_fcmtokens (user_id, token) 
+        VALUES (?, ?) 
+        ON DUPLICATE KEY UPDATE token = VALUES(token)
+    `;
+
+    db.query(query, [user_id, token], (err, result) => {
+        if (err) {
+            console.error('Error saving FCM token:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.status(200).json({ message: 'FCM token saved successfully' });
+    });
 });
+
 
 // API Endpoint to Delete User
 app.delete('/api/users/:id', (req, res) => {

@@ -9,6 +9,7 @@ const fs = require("fs");
 router.post("/create", taskController.createTask);
 router.get("/", taskController.getAllTasks);
 router.get("/tasks/:id", taskController.getTaskById);
+router.get("/:unique_id", taskController.getTaskByUniqueId);
 router.put("/tasks/:id", taskController.updateTask);
 router.delete("/tasks/:id", taskController.deleteTask);
 

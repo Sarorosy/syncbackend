@@ -91,5 +91,77 @@ const updateUser = (req, res) => {
     });
 };
 
+const addUser = (req, res) => {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+        return res.status(400).json({ status: false, message: "All fields are required" });
+    }
 
-module.exports = { loginUser , getAllUsers, updateUser};
+    userModel.findUserByEmail(email, (err, user) => {
+        if (err) return res.status(500).json({ status: false, message: "Database error" });
+
+        if (user && user.trashed === 0) {
+            return res.status(400).json({ status: false, message: "Email already exists" });
+        }
+
+        userModel.addUser({ name, email, password: password }, (err, result) => {
+            if (err) return res.status(500).json({ status: false, message: "Failed to add user" });
+
+            res.json({ status: true, message: "User added successfully" });
+        });
+    });
+};
+
+// Edit user details
+const editUser = (req, res) => {
+    upload.single("profile_pic")(req, res, () => {
+        const { id, name, pronouns, bio, email } = req.body;
+        let profile_pic = req.file ? `/uploads/users/${req.file.filename}` : null;
+
+        userModel.updateUser(id, { name, pronouns, bio, profile_pic, email }, (err, result) => {
+            if (err) return res.status(500).json({ status: false, message: "Database error" });
+            if (result.affectedRows === 0) return res.status(404).json({ status: false, message: "User not found" });
+
+            userModel.findUserById(id, (err, updatedUser) => {
+                if (err) return res.status(500).json({ status: false, message: "Error fetching updated user" });
+                if (!updatedUser) return res.status(404).json({ status: false, message: "User not found" });
+
+                const io = getIO();
+                io.emit("user_updated", updatedUser);
+
+                res.json({ status: true, message: "User updated successfully", updatedUser });
+            });
+        });
+    });
+};
+
+// Soft delete user (update trashed column)
+const deleteUser = (req, res) => {
+    const { id } = req.params;
+    userModel.softDeleteUser(id, (err, result) => {
+        if (err) return res.status(500).json({ status: false, message: "Database error" });
+        if (result.affectedRows === 0) return res.status(404).json({ status: false, message: "User not found" });
+
+        res.json({ status: true, message: "User deleted successfully" });
+    });
+};
+
+const getUserById = (req, res) => {
+    const userId = req.params.id;
+
+    userModel.findUserById(userId, (err, user) => {
+        if (err) {
+            console.error("Error fetching user:", err);
+            return res.status(500).json({ status: false, message: "Internal server error" });
+        }
+
+        if (!user) {
+            return res.status(404).json({ status: false, message: "User not found" });
+        }
+
+        res.status(200).json({ status: true, user });
+    });
+};
+
+
+module.exports = { loginUser , getAllUsers, updateUser, addUser, editUser, deleteUser,getUserById };
