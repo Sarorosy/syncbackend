@@ -2,7 +2,7 @@ var mysql = require('mysql');
 var connection = mysql.createConnection({
     host     : '127.0.0.1',
     user     : 'root',
-    password : '',//sarorosy
+    password : 'sarorosy',//sarorosy
     database : 'chat_app',
     charset  : 'utf8mb4'
 });

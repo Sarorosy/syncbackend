@@ -10,7 +10,7 @@ const createTask = async (task, callback) => {
         uniqueId,
         task.title,
         task.description,
-        task.assigned_to,
+        task.assigned_to && task.assigned_to !== '' ? task.assigned_to : null,
         task.followers,
         task.status,
         task.priority,

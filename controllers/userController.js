@@ -61,35 +61,39 @@ const getAllUsers = (req, res) => {
 const updateUser = (req, res) => {
     upload.single("profile_pic")(req, res, () => {
         const { id, name, pronouns, bio, email } = req.body;
-        let profile_pic = req.file ? `/uploads/users/${req.file.filename}` : null;
-
-        userModel.updateUser(id, { name, pronouns, bio, profile_pic }, (err, result) => {
-            if (err) {
-                console.error("Update error:", err);
-                return res.status(500).json({ status: false, message: "Database error" });
-            }
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ status: false, message: "User not found" });
+        
+        // Fetch the existing user to retain the old profile picture if no new file is uploaded
+        userModel.findUserById(id, (err, existingUser) => {
+            if (err || !existingUser) {
+                return res.status(500).json({ status: false, message: "User not found" });
             }
 
-            userModel.findUserById(id, (err, updatedUser) => {
+            let profile_pic = req.file ? `/uploads/users/${req.file.filename}` : existingUser.profile_pic; // Retain old pic if no new file
+
+            userModel.updateUser(id, { name, pronouns, bio, profile_pic }, (err, result) => {
                 if (err) {
-                    console.error("Find user error:", err);
-                    return res.status(500).json({ status: false, message: "Error fetching updated user" });
+                    console.error("Update error:", err);
+                    return res.status(500).json({ status: false, message: "Database error" });
                 }
-                if (!updatedUser) {
-                    console.error("User not found after update:", id);
-                    return res.status(404).json({ status: false, message: "User not found after update" });
+                if (result.affectedRows === 0) {
+                    return res.status(404).json({ status: false, message: "User not found" });
                 }
 
-                const io = getIO(); // Get the initialized io instance
-                io.emit("user_updated", updatedUser);
+                userModel.findUserById(id, (err, updatedUser) => {
+                    if (err || !updatedUser) {
+                        return res.status(500).json({ status: false, message: "Error fetching updated user" });
+                    }
 
-                res.json({ status: true, message: "Profile updated successfully", updatedUser });
+                    const io = getIO();
+                    io.emit("user_updated", updatedUser);
+
+                    res.json({ status: true, message: "Profile updated successfully", updatedUser });
+                });
             });
         });
     });
 };
+
 
 const addUser = (req, res) => {
     const { name, email, password } = req.body;
