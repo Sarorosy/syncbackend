@@ -344,6 +344,79 @@ io.on("connection", (socket) => {
         io.emit("task_description_updated", { taskId, description });
     });
 
+    socket.on("update_task_duedate", (data) => {
+        const { taskId, dueDate, user_id } = data;
+
+        if (!taskId) {
+            console.error("Task ID required");
+            return;
+        }
+
+        // Step 1: Check if the title has actually changed
+        const checkTitleQuery = "SELECT due_date FROM tbl_tasks WHERE id = ?";
+        db.query(checkTitleQuery, [taskId], (err, results) => {
+            if (err) {
+                console.error("Error fetching task title:", err);
+                return;
+            }
+
+            if (results.length === 0) {
+                console.error("Task not found");
+                return;
+            }
+
+            const currentDueDate = results[0].due_date;
+            console.log("Current task title:", currentDueDate);
+            console.log("New task title:", dueDate);
+            if (currentDueDate == dueDate) {
+                console.log("No changes detected in task Due_date, skipping update.");
+                return; 
+            }
+
+            // Step 2: Proceed with updating the task title in the database
+            const updateQuery = "UPDATE tbl_tasks SET due_date = ? WHERE id = ?";
+            db.query(updateQuery, [dueDate, taskId], (updateErr) => {
+                if (updateErr) {
+                    console.error("Error updating task:", updateErr);
+                    return;
+                }
+
+                console.log("Task updated successfully");
+
+                const insertQuery = "INSERT INTO tbl_comments (task_id, user_id, comment, islog, created_at) VALUES (?, ?, ?, ?, NOW())";
+                db.query(insertQuery, [taskId, user_id, "Changed due date to " + dueDate, 1], (insertErr, insertResults) => {
+                    if (insertErr) {
+                        console.error("Error saving comment:", insertErr);
+                        return;
+                    }
+
+                    console.log("Comment added successfully");
+
+                    // Fetch and broadcast the new comment
+                    const fetchQuery = `
+                        SELECT c.*, u.name AS user_name, u.profile_pic 
+                        FROM tbl_comments c 
+                        JOIN tbl_users u ON c.user_id = u.id 
+                        WHERE c.id = ?
+                        ORDER BY c.created_at ASC
+                    `;
+
+                    db.query(fetchQuery, [insertResults.insertId], (fetchErr, fetchResults) => {
+                        if (fetchErr) {
+                            console.error("Error fetching comment details:", fetchErr);
+                            return;
+                        }
+
+                        if (fetchResults.length > 0) {
+                            io.emit("new_comment", fetchResults[0]);
+                        }
+                    });
+                });
+
+                io.emit("task_duedate_updated", { taskId, dueDate });
+            });
+        });
+    });
     // Handle disconnection
     socket.on("disconnect", () => {
         console.log("A user disconnected:", socket.id);

@@ -11,6 +11,7 @@ router.get("/", taskController.getAllTasks);
 router.get("/tasks/:id", taskController.getTaskById);
 router.get("/:unique_id", taskController.getTaskByUniqueId);
 router.put("/tasks/:id", taskController.updateTask);
+router.put("/:id/followers", taskController.updateFollowers);
 router.delete("/tasks/:id", taskController.deleteTask);
 
 // Image Upload Route

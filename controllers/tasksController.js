@@ -86,6 +86,21 @@ const updateTask = (req, res) => {
     });
 };
 
+const updateFollowers = (req, res) => {
+    const { id } = req.params;
+    const { followers } = req.body;
+
+    taskModel.updateFollowers(id, followers, (err, result) => {
+        if (err) return res.status(500).json({ status: false, message: "Database error", error: err });
+
+        res.json({
+            status: true,
+            message: "Followers updated successfully",
+            follower_names: result.follower_names || "", // Return names of followers
+        });
+    });
+};
+
 // Delete a task
 const deleteTask = (req, res) => {
     const { id } = req.params;
@@ -108,4 +123,4 @@ const uploadTaskImage = (req, res) => {
     });
 };
 
-module.exports = { createTask, getAllTasks, getTaskById,getTaskByUniqueId, updateTask, deleteTask, uploadTaskImage };
+module.exports = { createTask, getAllTasks, getTaskById,getTaskByUniqueId, updateTask,updateFollowers, deleteTask, uploadTaskImage };

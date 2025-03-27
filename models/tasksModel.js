@@ -11,11 +11,11 @@ const createTask = async (task, callback) => {
         task.title,
         task.description,
         task.assigned_to && task.assigned_to !== '' ? task.assigned_to : null,
-        task.followers,
+        task.followers && task.followers.length > 0 ? task.followers.join(',') : null,
         task.status,
         task.priority,
-        task.due_date,
-        task.due_time,
+        task.due_date && task.due_date !== '' ? task.due_date : null,
+        task.due_time && task.due_time !== '' ? task.due_time : null,
         task.created_by,
         task.image_url || null
     ], (err, result) => {
@@ -80,8 +80,6 @@ const getAllTasks = (callback) => {
     );
 };
 
-
-
 // Get a task by ID
 const getTaskById = (unique_id, callback) => {
     db.query("SELECT * FROM tbl_tasks WHERE id = ?", [unique_id], callback);
@@ -106,8 +104,6 @@ const getTaskByUniqueId = (id, callback) => {
     );
 };
 
-
-
 // Update a task
 const updateTask = (id, task, callback) => {
     const sql = `UPDATE tbl_tasks SET title=?, description=?, assigned_to=?, followers=?, status=?, priority=?, due_date=?, due_time=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`;
@@ -123,6 +119,29 @@ const updateTask = (id, task, callback) => {
         id
     ], callback);
 };
+
+const updateFollowers = (id, followers, callback) => {
+    // Ensure followers is a string (in case it's passed as an array)
+    const formattedFollowers = Array.isArray(followers) ? followers.join(',') : followers;
+
+    const sqlUpdate = `UPDATE tbl_tasks SET followers=?, updated_at=CURRENT_TIMESTAMP WHERE id=?`;
+
+    db.query(sqlUpdate, [formattedFollowers, id], (err, result) => {
+        if (err) return callback(err, null);
+
+        // Fetch the updated follower names
+        const sqlSelect = `
+            SELECT GROUP_CONCAT(DISTINCT u.name) AS follower_names 
+            FROM tbl_users u
+            WHERE FIND_IN_SET(u.id, ?) > 0`;
+
+        db.query(sqlSelect, [formattedFollowers], (err, results) => {
+            if (err) return callback(err, null);
+            callback(null, results[0]); // Returns follower_names
+        });
+    });
+};
+
 
 // Delete a task
 const deleteTask = (id, callback) => {
@@ -151,5 +170,6 @@ module.exports = {
     getTaskById,
     getTaskByUniqueId,
     updateTask,
+    updateFollowers,
     deleteTask
 };
